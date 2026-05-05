@@ -1,0 +1,134 @@
+# ============================================================
+# AI DevOps Incident Auto-Resolver — Configuration
+# ============================================================
+
+app:
+  name: "AI DevOps Incident Auto-Resolver"
+  version: "1.0.0"
+  environment: "production"  # development | staging | production
+  debug: false
+
+server:
+  host: "0.0.0.0"
+  port: 8000
+  workers: 4
+  reload: false
+
+mcp_server:
+  host: "0.0.0.0"
+  port: 8001
+  api_key: "${MCP_API_KEY}"
+  jwt_secret: "${JWT_SECRET}"
+  jwt_algorithm: "HS256"
+  jwt_expire_minutes: 60
+
+ai_agent:
+  model: "gemini-2.0-flash"
+  max_tokens: 4096
+  temperature: 0.2
+  anthropic_api_key: "${ANTHROPIC_API_KEY}"
+  analysis_interval_seconds: 30
+  max_retries: 3
+  retry_delay_seconds: 5
+  cooldown_seconds: 300          # 5-min cooldown per service action
+  max_actions_per_hour: 20       # Safety rate limit
+  autonomous_mode: true          # false = suggestion mode only
+
+monitoring:
+  prometheus_url: "http://prometheus:9090"
+  metrics_scrape_interval: 15
+  alert_evaluation_interval: 30
+  services:
+    - name: "backend"
+      port: 8000
+      critical: true
+
+    - name: "mcp-server"
+      port: 8001
+      critical: true
+
+    - name: "redis"
+      port: 6379
+      critical: true
+
+thresholds:
+  cpu_warning: 70.0
+  cpu_critical: 90.0
+  memory_warning: 75.0
+  memory_critical: 92.0
+  error_rate_warning: 5.0       # errors per minute
+  error_rate_critical: 20.0
+  response_time_warning: 1000   # ms
+  response_time_critical: 5000  # ms
+  restart_threshold: 3          # restarts before escalation
+  crash_loop_window: 600        # seconds
+
+remediation:
+  policies:
+    high_cpu:
+      enabled: true
+      action: "scale_service"
+      min_replicas: 1
+      max_replicas: 10
+      scale_step: 2
+      cooldown_seconds: 300
+    service_crash:
+      enabled: true
+      action: "restart_service"
+      max_restarts: 3
+      escalate_after: 3
+      cooldown_seconds: 120
+    high_memory:
+      enabled: true
+      action: "restart_service"
+      threshold: 92.0
+      cooldown_seconds: 180
+    repeated_failure:
+      enabled: true
+      action: "notify_team"
+      threshold: 5
+      severity: "critical"
+
+logging:
+  level: "INFO"
+  format: "json"
+  file_path: "/logs/resolver.log"
+  max_size_mb: 100
+  backup_count: 10
+  rotation: "midnight"
+
+notifications:
+  slack_webhook: "${SLACK_WEBHOOK_URL}"
+  pagerduty_key: "${PAGERDUTY_KEY}"
+  email_recipients:
+    - "ops-team@company.com"
+    - "on-call@company.com"
+  severity_routing:
+    info: ["slack"]
+    warning: ["slack"]
+    critical: ["slack", "pagerduty", "email"]
+
+security:
+  allowed_origins:
+    - "http://localhost:3000"
+    - "http://localhost:8000"
+    - "https://devops-dashboard.company.com"
+  rate_limit_per_minute: 100
+  require_auth: true
+
+websocket:
+  heartbeat_interval: 30
+  max_connections: 100
+  broadcast_interval: 5
+
+redis:
+  host: "${REDIS_HOST:-redis}"
+  port: 6379
+  db: 0
+  password: "${REDIS_PASSWORD}"
+  ttl_seconds: 3600
+
+database:
+  url: "${DATABASE_URL:-sqlite:///./resolver.db}"
+  pool_size: 10
+  max_overflow: 20

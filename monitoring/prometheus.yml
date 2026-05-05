@@ -1,0 +1,71 @@
+# monitoring/prometheus.yml — Prometheus configuration
+# Scrapes metrics from all services + the resolver backend
+
+global:
+  scrape_interval:     15s
+  evaluation_interval: 15s
+  scrape_timeout:      10s
+  external_labels:
+    environment: 'production'
+    cluster: 'ai-devops-resolver'
+
+# Alerting rules
+rule_files:
+  - "alert_rules.yml"
+
+# Alertmanager config
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - alertmanager:9093
+
+# Scrape targets
+scrape_configs:
+  # Self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # Backend API server
+  - job_name: 'backend-api'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['backend:8000']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        regex: '(.+):.+'
+        replacement: '${1}'
+
+  # MCP Server
+  - job_name: 'mcp-server'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['mcp-server:8001']
+
+  # Simulated services
+  - job_name: 'api-service'
+    static_configs:
+      - targets: ['api-service:8080']
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: 'go_.*'
+        action: drop
+
+  - job_name: 'worker-service'
+    static_configs:
+      - targets: ['worker-service:8081']
+
+  - job_name: 'db-proxy'
+    static_configs:
+      - targets: ['db-proxy:5432']
+
+  - job_name: 'cache-service'
+    static_configs:
+      - targets: ['cache-service:6379']
+
+  # Node exporter (host metrics)
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']
