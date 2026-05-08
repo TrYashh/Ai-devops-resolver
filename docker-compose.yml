@@ -182,3 +182,13 @@ services:
     networks:
       - resolver-net
     logging: *common-logging
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: resolver-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    networks:
+      - resolver-net

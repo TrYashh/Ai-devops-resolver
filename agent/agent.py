@@ -356,10 +356,27 @@ class IncidentAutoResolver:
 
         # 4. AI reasoning
         logger.info(f"Anomalies detected on {service}: {[a['type'] for a in anomalies]}")
-        ai_decision = await self.ai_engine.analyze(service, metrics, logs, anomalies, history)
+
+        # If no anomalies detected, resolve old incidents and skip
+        if not anomalies:
+            self._maybe_resolve_incident(service)
+            return
+
+        ai_decision = await self.ai_engine.analyze(
+            service,
+            metrics,
+            logs,
+            anomalies,
+            history
+        )
 
         # 5. Create/update incident
-        incident = self._upsert_incident(service, anomalies, ai_decision, metrics)
+        incident = self._upsert_incident(
+            service,
+            anomalies,
+            ai_decision,
+            metrics
+        )
 
         # 6. Execute or suggest
         if self.autonomous_mode:

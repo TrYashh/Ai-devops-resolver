@@ -13,6 +13,7 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set
+from backend.api_routes import router as api_router
 
 import httpx
 import uvicorn
@@ -47,6 +48,7 @@ app = FastAPI(
     version="1.0.0",
     description="Orchestration API for the AI DevOps Incident Auto-Resolver dashboard",
 )
+app.include_router(api_router)
 
 app.add_middleware(
     CORSMiddleware,
